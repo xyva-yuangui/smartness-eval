@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "weights": {
+    "main": {
+      "understanding": 10,
+      "analysis": 10,
+      "thinking": 10,
+      "reasoning": 15,
+      "self_iteration": 10,
+      "dialogue_communication": 10,
+      "responsiveness": 5
+    },
+    "expanded": {
+      "robustness": 8,
+      "generalization": 5,
+      "policy_adherence": 7,
+      "tool_reliability": 5,
+      "calibration": 5
+    }
+  },
+  "modes": {
+    "quick": {
+      "task_tags": ["quick", "core"],
+      "repeat_count": 1,
+      "window_days": 3
+    },
+    "standard": {
+      "task_tags": ["quick", "core", "standard"],
+      "repeat_count": 1,
+      "window_days": 7
+    },
+    "deep": {
+      "task_tags": ["quick", "core", "standard", "deep"],
+      "repeat_count": 2,
+      "window_days": 30
+    }
+  },
+  "history_limit": 200,
+  "confidence_level": 0.95
+}
