@@ -2,14 +2,23 @@
 
 # 🎯 OpenClaw Smartness Eval
 
-**自动化评估 AI Agent 智能度的开源技能**
+**Automated 12-Dimension Intelligence Assessment for AI Agents**
+
+**自动化 12 维度 AI Agent 智能度评估**
 
 [![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/xyva-yuangui/smartness-eval)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-OpenClaw-purple.svg)](https://github.com/nicepkg/openclaw)
+[![Stars](https://img.shields.io/github/stars/xyva-yuangui/smartness-eval?style=social)](https://github.com/xyva-yuangui/smartness-eval)
+
+*Stop guessing if your Agent is getting smarter — measure it.*
 
 *不再凭"感觉"判断 Agent 是否在进步 —— 用数据说话。*
+
+**Author: 圆规 ([@xyva-yuangui](https://github.com/xyva-yuangui))**
+
+[English](#-what-is-this) · [中文](#-这是什么)
 
 </div>
 
@@ -279,8 +288,15 @@ MIT License. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**Built with ❤️ for the OpenClaw ecosystem**
+**Built with ❤️ by 圆规 for the OpenClaw ecosystem**
 
 [ClawHub](https://github.com/nicepkg/openclaw) · [Report Bug](https://github.com/xyva-yuangui/smartness-eval/issues) · [Request Feature](https://github.com/xyva-yuangui/smartness-eval/issues)
 
 </div>
+
+---
+
+<!-- GitHub Topics (add these in repo Settings → Topics):
+  ai-agent, agent-evaluation, benchmark, openclaw, llm-evaluation,
+  ai-assessment, python, self-assessment, agent-intelligence, clawhub
+-->
