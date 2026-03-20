@@ -2,7 +2,7 @@
 name: openclaw-smartness-eval
 description: OpenClaw 智能度综合评伌技能。围绕 14 个维度（含规划能力、幻觉控制）输出综合评分、证据、风险与趋势。对齐 CLEAR/T-Eval/Anthropic 行业标准。
 triggers:
-version: "0.3.0"
+version: "0.3.2"
 status: beta
 updated: 2026-03-16
 provides: ["smartness-evaluation", "capability-audit", "self-eval", "benchmark-aggregation", "trend-analysis"]
@@ -112,6 +112,61 @@ python3 skills/openclaw-smartness-eval/scripts/eval.py --mode standard --llm-jud
 - `quick` — 小样本 + 关键日志，~10 个测试
 - `standard` — 默认周度评估，~25 个测试 + 2 个随机探针
 - `deep` — 全部测试 x2 重复运行 + pass@k + 30天窗口 + 趋势对比
+
+## 安全声明 / Security Declaration
+
+本技能被设计为**只读评估工具**，以下是完整的行为声明：
+
+### 文件读取（只读）
+
+本技能**只读取**以下工作区状态文件，**不修改任何现有文件**：
+
+| 文件 | 用途 | 写入？ |
+|------|------|--------|
+| `state/response-latency-metrics.json` | 延迟 P50/P95 计算 | ❌ 只读 |
+| `state/error-tracker.json` | 错误修复率统计 | ❌ 只读 |
+| `state/pattern-library.json` | 模式库健康度 | ❌ 只读 |
+| `state/cron-governor-report.json` | Cron 任务状态 | ❌ 只读 |
+| `state/benchmark-results/history.jsonl` | 基准测试通过率 | ❌ 只读 |
+| `state/v5-orchestrator-log.json` | 编排器使用量 | ❌ 只读 |
+| `state/v5-finalize-log.json` | Finalize 审批率 | ❌ 只读 |
+| `state/message-analyzer-log.json` | 真实交互采样 | ❌ 只读 |
+| `state/reflection-reports/` | 自省报告数量 | ❌ 只读 |
+| `state/alerts.jsonl` | 告警频率统计 | ❌ 只读 |
+| `.reasoning/reasoning-store.sqlite` | 推理深度查询 | ❌ 只读 |
+
+### 文件写入（仅限自身输出目录）
+
+本技能**仅写入** `state/smartness-eval/` 目录下的评估结果：
+
+- `state/smartness-eval/runs/<timestamp>.json` — 完整评估 JSON
+- `state/smartness-eval/reports/<date>.md` — Markdown 报告
+- `state/smartness-eval/history.jsonl` — 历史评分记录
+
+### 命令执行
+
+本技能通过 `subprocess` 运行 `task-suite.json` 中定义的测试命令：
+
+- **所有命令都经过白名单校验**（`validate_command()` 函数）
+- **禁止**：内联 Python/Shell 代码、绝对路径、管道操作、危险系统命令
+- **只允许**：以 `python3 scripts/`、`cat state/`、`sqlite3 .reasoning/` 等安全前缀开头的命令
+- 命令执行超时限制为 30 秒
+
+### 网络访问
+
+- **默认无网络访问**
+- 仅在用户显式传入 `--llm-judge` 参数时，会调用 DeepSeek/OpenAI API（需用户自行配置 API Key）
+- 除此之外，本技能完全离线运行
+
+### 无持久化副作用
+
+- 不修改 OpenClaw 配置
+- 不安装任何依赖
+- 不修改系统文件
+- 不发送遥测数据
+- 仅使用 Python 标准库
+
+---
 
 ## 文件结构
 
