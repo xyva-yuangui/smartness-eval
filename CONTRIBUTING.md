@@ -7,7 +7,7 @@ Thanks for your interest in contributing! / 感谢你的贡献意愿！
 ## Development Setup / 开发环境
 
 ```bash
-git clone https://github.com/yh22e/smartness-eval.git
+git clone https://github.com/xyva-yuangui/smartness-eval.git
 cd smartness-eval
 
 # Verify skill structure / 验证技能结构

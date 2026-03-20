@@ -1,20 +1,22 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "weights": {
     "main": {
-      "understanding": 10,
-      "analysis": 10,
-      "thinking": 10,
-      "reasoning": 15,
-      "self_iteration": 10,
-      "dialogue_communication": 10,
+      "understanding": 9,
+      "analysis": 9,
+      "thinking": 9,
+      "reasoning": 13,
+      "self_iteration": 9,
+      "dialogue_communication": 9,
       "responsiveness": 5
     },
     "expanded": {
-      "robustness": 8,
+      "robustness": 7,
       "generalization": 5,
-      "policy_adherence": 7,
-      "tool_reliability": 5,
+      "planning": 5,
+      "hallucination_control": 6,
+      "policy_adherence": 5,
+      "tool_reliability": 4,
       "calibration": 5
     }
   },

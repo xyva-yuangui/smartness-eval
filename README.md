@@ -4,15 +4,15 @@
 
 **Stop guessing. Start measuring.**
 
-[![Version](https://img.shields.io/badge/version-0.2.1-blue?style=flat-square)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue?style=flat-square)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT--0-green?style=flat-square)](./LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow?style=flat-square)](./scripts/eval.py)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-2026.3.13+-orange?style=flat-square)](./SKILL.md)
-[![CI](https://github.com/yh22e/smartness-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/yh22e/smartness-eval/actions)
+[![CI](https://github.com/xyva-yuangui/smartness-eval/actions/workflows/ci.yml/badge.svg)](https://github.com/xyva-yuangui/smartness-eval/actions)
 
-A **12-dimension** evaluation framework that turns your AI agent's real runtime data into a structured, reproducible intelligence score — with confidence intervals, trend tracking, and anti-gaming probes.
+A **14-dimension** evaluation framework that turns your AI agent's real runtime data into a structured, reproducible intelligence score — with confidence intervals, trend tracking, and anti-gaming probes. Aligned with CLEAR, T-Eval, and Anthropic evaluation standards.
 
-一个 **12 维度**的 AI Agent 智能评估框架，将真实运行数据转化为可量化、可重复、可追踪的智能度评分。
+一个 **14 维度**的 AI Agent 智能评估框架，将真实运行数据转化为可量化、可重复、可追踪的智能度评分。对齐 CLEAR、T-Eval、Anthropic 等行业评测标准。
 
 **[English](#overview) · [中文说明](#-中文说明) · [Quick Start](#-quick-start) · [Docs](./docs/)**
 
@@ -28,7 +28,7 @@ Most AI agent improvements are anecdotal — _"it feels smarter."_ This project 
 
 | Signal | Description | Example |
 |--------|-------------|---------|
-| **Task tests** | 28 automated test commands across 12 dimensions | Intent recognition, risk detection, reasoning template availability |
+| **Task tests** | 34 automated test commands across 14 dimensions | Intent recognition, risk detection, reasoning template availability, hallucination control |
 | **Runtime telemetry** | Real logs, latency metrics, error tracker, reasoning DB | P50/P95 latency, error fix rate, pattern library growth |
 | **Anti-gaming probes** | Randomized inputs injected at eval time | Prevents overfitting to known test cases |
 
@@ -40,7 +40,7 @@ The result: a single JSON + Markdown report containing overall score, per-dimens
 
 ```bash
 # 1. Clone
-git clone https://github.com/yh22e/smartness-eval.git
+git clone https://github.com/xyva-yuangui/smartness-eval.git
 cd smartness-eval
 
 # 2. Health check — verify skill structure
@@ -58,31 +58,35 @@ python3 scripts/eval.py --mode deep --compare-last
 
 ---
 
-## 📊 The 12 Dimensions
+## 📊 The 14 Dimensions
 
 ### 7 Main Dimensions / 七大主维度
 
 | # | Dimension | 维度 | Weight | What it measures |
 |---|-----------|------|--------|------------------|
-| 1 | **Understanding** | 理解 | 10% | Intent recognition, constraint capture, context consistency |
-| 2 | **Analysis** | 分析 | 10% | Problem decomposition, dependency identification, structured output |
-| 3 | **Thinking** | 思考 | 10% | Risk awareness, self-check, adversarial reasoning |
-| 4 | **Reasoning** | 推理 | 15% | Logic chain completeness, evidence support, confidence calibration |
-| 5 | **Self-iteration** | 自我迭代 | 10% | Error fix rate, pattern promotion, learning freshness |
-| 6 | **Dialogue** | 对话沟通 | 10% | Clarity, completeness, actionability, tone matching |
+| 1 | **Understanding** | 理解 | 9% | Intent recognition, constraint capture, context consistency |
+| 2 | **Analysis** | 分析 | 9% | Problem decomposition, dependency identification, structured output |
+| 3 | **Thinking** | 思考 | 9% | Risk awareness, self-check, adversarial reasoning |
+| 4 | **Reasoning** | 推理 | 13% | Logic chain completeness, evidence support, confidence calibration |
+| 5 | **Self-iteration** | 自我迭代 | 9% | Error fix rate, pattern promotion, learning freshness |
+| 6 | **Dialogue** | 对话沟通 | 9% | Clarity, completeness, actionability, tone matching |
 | 7 | **Responsiveness** | 响应时长 | 5% | P50/P95 latency, timeout rate, API chain health |
 
-### 5 Expanded Dimensions / 五大扩展维度
+### 7 Expanded Dimensions / 七大扩展维度
 
 | # | Dimension | 维度 | Weight | What it measures |
 |---|-----------|------|--------|------------------|
-| 8 | **Robustness** | 鲁棒性 | 8% | Stability under noise, long context, edge cases |
+| 8 | **Robustness** | 鲁棒性 | 7% | Stability under noise, long context, edge cases |
 | 9 | **Generalization** | 泛化能力 | 5% | Cross-domain routing accuracy, intent diversity |
-| 10 | **Policy adherence** | 策略遵循 | 7% | AGENTS.md compliance, safety confirmation, operation constraints |
-| 11 | **Tool reliability** | 工具可靠性 | 5% | Script availability, cron health, state file integrity |
-| 12 | **Calibration** | 校准能力 | 5% | Uncertainty expression, confidence accuracy, high-confidence error rate |
+| 10 | **Planning** ⭐ | 规划能力 | 5% | Task decomposition, step ordering, dependency management, workflow execution |
+| 11 | **Hallucination Control** ⭐ | 幻觉控制 | 6% | Factual accuracy, grounded responses, refusal when uncertain |
+| 12 | **Policy adherence** | 策略遵循 | 5% | AGENTS.md compliance, safety confirmation, operation constraints |
+| 13 | **Tool reliability** | 工具可靠性 | 4% | Script availability, cron health, state file integrity |
+| 14 | **Calibration** | 校准能力 | 5% | Uncertainty expression, confidence accuracy, high-confidence error rate |
 
 > Each dimension has a detailed **0–5 rubric** with concrete criteria. See [`config/rubrics.json`](./config/rubrics.json).
+> 
+> ⭐ = New in v0.3.0. Aligned with [CLEAR framework](https://arxiv.org/html/2511.14136v1), [T-Eval (ACL 2024)](https://www.53ai.com/news/LargeLanguageModel/2024071870985.html), and [Anthropic Agent Eval](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) standards.
 
 ---
 
@@ -90,8 +94,8 @@ python3 scripts/eval.py --mode deep --compare-last
 
 | Mode | Tests | Data window | Repeat | Probes | Best for |
 |------|-------|-------------|--------|--------|----------|
-| `quick` | ~10 | 3 days | 1x | 1 | Daily self-reflection / 每日自省 |
-| `standard` | ~25 | 7 days | 1x | 2 | Weekly report / 每周能力周报 |
+| `quick` | ~12 | 3 days | 1x | 1 | Daily self-reflection / 每日自省 |
+| `standard` | ~30 | 7 days | 1x | 2 | Weekly report / 每周能力周报 |
 | `deep` | All | 30 days | 2x | 3 | Monthly audit or post-upgrade / 月度审计 |
 
 ---
@@ -261,8 +265,8 @@ smartness-eval/
 
 | 特性 | 说明 |
 |------|------|
-| **12 维度评分** | 理解、分析、思考、推理、自我迭代、对话沟通、响应时长 + 鲁棒性、泛化、策略遵循、工具可靠性、校准 |
-| **28 项自动化测试** | 涵盖意图识别、风险检测、推理模板验证、API 健康检查等 |
+| **14 维度评分** | 理解、分析、思考、推理、自我迭代、对话沟通、响应时长 + 鲁棒性、泛化、**规划能力**、**幻觉控制**、策略遵循、工具可靠性、校准 |
+| **34 项自动化测试** | 涵盖意图识别、风险检测、推理模板验证、幻觉控制、任务规划、API 健康检查等 |
 | **真实运行数据** | 从延迟指标、错误追踪、推理知识库、Cron 状态等数据源交叉验证 |
 | **反作弊探针** | 随机注入测试输入，防止针对已知测试的过拟合 |
 | **趋势追踪** | `--compare-last` 对比上一次评估，显示各维度变化和退化告警 |

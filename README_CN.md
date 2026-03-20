@@ -67,7 +67,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yh22e/smartness-eval.git
+git clone https://github.com/xyva-yuangui/smartness-eval.git
 cd smartness-eval
 
 # 检查技能结构完整性

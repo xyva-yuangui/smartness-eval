@@ -108,7 +108,7 @@ Regressions are highlighted as warnings. This helps you identify if a recent cha
 🔍 Evidence: 100% benchmark pass, 116 reasoning entries
 
 Evaluated with OpenClaw Smartness Eval ⭐
-https://github.com/yh22e/smartness-eval
+https://github.com/xyva-yuangui/smartness-eval
 
 #AIAgent #Benchmark #OpenClaw
 ```

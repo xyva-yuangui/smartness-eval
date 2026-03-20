@@ -1,8 +1,8 @@
 ---
 name: openclaw-smartness-eval
-description: OpenClaw 智能度综合评估技能。围绕理解、分析、思考、推理、自我迭代、对话沟通、响应时长以及扩展维度输出综合评分、证据、风险与趋势。
+description: OpenClaw 智能度综合评伌技能。围绕 14 个维度（含规划能力、幻觉控制）输出综合评分、证据、风险与趋势。对齐 CLEAR/T-Eval/Anthropic 行业标准。
 triggers:
-version: "0.2.1"
+version: "0.3.0"
 status: beta
 updated: 2026-03-16
 provides: ["smartness-evaluation", "capability-audit", "self-eval", "benchmark-aggregation", "trend-analysis"]
@@ -104,7 +104,7 @@ python3 skills/openclaw-smartness-eval/scripts/eval.py --mode standard --llm-jud
 - `state/rule-candidates.json`
 - `.reasoning/reasoning-store.sqlite` (推理知识库)
 - `scripts/regression-metrics-report.py` (回归指标)
-- 任务集中的 28 项规则测试命令
+- 任务集中的 34 项规则测试命令
 - 随机探针测试 (反作弊)
 
 ## 模式说明

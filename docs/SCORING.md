@@ -1,8 +1,10 @@
-<![CDATA[# Scoring Formulas / 评分公式详解
+<![CDATA[# Scoring Formulas / 评分公式详解 (v0.3.0)
 
-This document explains how each of the 12 dimension scores is computed, how they combine into an overall score, and how grades are assigned.
+This document explains how each of the **14** dimension scores is computed, how they combine into an overall score, and how grades are assigned.
 
-本文档详细说明 12 个维度的计算公式、总分合成方式和等级划分。
+本文档详细说明 14 个维度的计算公式、总分合成方式和等级划分。
+
+> **v0.3.0 changes:** Added `planning` and `hallucination_control` dimensions; all formula inputs normalized to 0–100 before weighting; all weights per dimension verified to sum to exactly 1.0; aligned with CLEAR framework and T-Eval standards.
 
 ---
 
@@ -16,106 +18,131 @@ All weights sum to 100%. The final score is on a 0–100 scale.
 
 ### Weight Table / 权重表
 
-| # | Dimension | 维度 | Weight |
-|---|-----------|------|--------|
-| 1 | Understanding | 理解 | 10% |
-| 2 | Analysis | 分析 | 10% |
-| 3 | Thinking | 思考 | 10% |
-| 4 | Reasoning | 推理 | 15% |
-| 5 | Self-iteration | 自我迭代 | 10% |
-| 6 | Dialogue | 对话沟通 | 10% |
-| 7 | Responsiveness | 响应时长 | 5% |
-| 8 | Robustness | 鲁棒性 | 8% |
-| 9 | Generalization | 泛化能力 | 5% |
-| 10 | Policy adherence | 策略遵循 | 7% |
-| 11 | Tool reliability | 工具可靠性 | 5% |
-| 12 | Calibration | 校准能力 | 5% |
+| # | Dimension | 维度 | Weight | Category |
+|---|-----------|------|--------|----------|
+| 1 | Understanding | 理解 | 9% | Main |
+| 2 | Analysis | 分析 | 9% | Main |
+| 3 | Thinking | 思考 | 9% | Main |
+| 4 | Reasoning | 推理 | 13% | Main |
+| 5 | Self-iteration | 自我迭代 | 9% | Main |
+| 6 | Dialogue | 对话沟通 | 9% | Main |
+| 7 | Responsiveness | 响应时长 | 5% | Main |
+| 8 | Robustness | 鲁棒性 | 7% | Expanded |
+| 9 | Generalization | 泛化能力 | 5% | Expanded |
+| 10 | **Planning** | **规划能力** | **5%** | **Expanded (NEW)** |
+| 11 | **Hallucination Control** | **幻觉控制** | **6%** | **Expanded (NEW)** |
+| 12 | Policy adherence | 策略遵循 | 5% | Expanded |
+| 13 | Tool reliability | 工具可靠性 | 4% | Expanded |
+| 14 | Calibration | 校准能力 | 5% | Expanded |
 
 > Weights are configurable in `config/config.json` under `"weights"`.
 
 ---
 
+## Normalization Principle / 归一化原则
+
+All metric inputs are normalized to a **0–100** scale before weighting. This ensures formula transparency — every weight directly represents its contribution percentage.
+
+所有指标输入在加权前均归一化到 **0–100** 范围。权重直接代表贡献百分比。
+
+```python
+# Example: real interaction count (raw 0–50) → normalized 0–100
+n_interaction = min(count, 50) / 50 * 100
+```
+
+---
+
 ## Per-Dimension Formulas / 各维度公式
 
-Each dimension score blends **task test results** with **real runtime metrics**. The blend ratio varies by dimension.
+Each dimension score blends **task test results** with **real runtime metrics**. All weights sum to 1.00.
 
-每个维度的分数由 **任务测试得分** 和 **真实运行指标** 按不同比例加权合成。
+每个维度的分数由 **任务测试得分** 和 **真实运行指标** 加权合成，所有权重之和 = 1.00。
 
-### 1. Understanding / 理解 (10%)
+### 1. Understanding / 理解 (9%)
 
 ```
-understanding = task_score × 0.50
-              + benchmark_pass_rate × 0.20
-              + intent_diversity × 0.15     # unique intent categories / total interactions
-              + context_consistency × 0.15  # from message-analyzer sampling
+understanding = task_score × 0.45          # task-suite pass rate
+              + benchmark_pass_rate × 0.15 # core benchmark
+              + n_interaction × 0.25       # real interaction count (cap 50, normalized)
+              + n_intent_coverage × 0.15   # unique intent types (cap 8, normalized)
 ```
+**Weights: 0.45 + 0.15 + 0.25 + 0.15 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `understanding`, benchmark history, message-analyzer log.
 
 ---
 
-### 2. Analysis / 分析 (10%)
+### 2. Analysis / 分析 (9%)
 
 ```
-analysis = task_score × 0.45
-         + reasoning_depth × 0.25          # high-confidence entries / total entries
-         + regression_duplicate_rate × 0.15 # lower is better (inverted)
-         + benchmark_pass_rate × 0.15
+analysis = task_score × 0.40              # task-suite pass rate
+         + benchmark_pass_rate × 0.15     # core benchmark
+         + reasoning_depth × 0.20         # high-confidence ratio (0–1 → 0–100)
+         + n_dup_rate_inv × 0.15          # inverted duplicate reply rate
+         + n_reasoning_total × 0.10       # reasoning store entries (cap 120, normalized)
 ```
+**Weights: 0.40 + 0.15 + 0.20 + 0.15 + 0.10 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `analysis`, reasoning store, regression metrics.
 
 ---
 
-### 3. Thinking / 思考 (10%)
+### 3. Thinking / 思考 (9%)
 
 ```
-thinking = task_score × 0.40
-         + quality_gate_coverage × 0.20    # thought-quality-gate dimensions present
-         + finalize_rate × 0.20            # finalize approvals / total interactions
-         + reflection_count × 0.20         # reflection reports in window (capped at 10)
+thinking = task_score × 0.35             # task-suite pass rate
+         + repeat_error_control × 0.20   # 100 - repeat_ratio * 100
+         + finalize_rate × 0.15          # finalize approval ratio (0–1 → 0–100)
+         + n_reasoning_high × 0.15       # high-confidence entries (cap 40, normalized)
+         + n_reflection × 0.15           # reflection reports (cap 10, normalized)
 ```
+**Weights: 0.35 + 0.20 + 0.15 + 0.15 + 0.15 = 1.00** ✓
 
-**Data sources:** task-suite tests tagged `thinking`, quality-gate script, finalize log, reflection reports.
+**Data sources:** task-suite tests tagged `thinking`, error-tracker, finalize log, reasoning store, reflection reports.
 
 ---
 
-### 4. Reasoning / 推理 (15%)
+### 4. Reasoning / 推理 (13%)
 
 ```
-reasoning = task_score × 0.40
-          + benchmark_pass_rate × 0.15
-          + reasoning_depth × 0.25         # high-confidence ratio in reasoning store
-          + reasoning_total × 0.20         # total entries, normalized (cap: 120)
+reasoning = task_score × 0.35            # task-suite pass rate
+          + benchmark_pass_rate × 0.15   # core benchmark
+          + reasoning_depth × 0.25       # high-confidence ratio (0–1 → 0–100)
+          + n_reasoning_total × 0.15     # reasoning entries (cap 120, normalized)
+          + finalize_rate × 0.10         # finalize approval ratio
 ```
+**Weights: 0.35 + 0.15 + 0.25 + 0.15 + 0.10 = 1.00** ✓
 
-**Data sources:** task-suite tests tagged `reasoning`, benchmark history, reasoning store (SQLite).
-
-**Normalization:** `reasoning_total_score = min(total / 120, 1.0) × 100`
+**Data sources:** task-suite tests tagged `reasoning`, benchmark history, reasoning store (SQLite), finalize log.
 
 ---
 
-### 5. Self-iteration / 自我迭代 (10%)
+### 5. Self-iteration / 自我迭代 (9%)
 
 ```
-self_iteration = task_score × 0.30
-               + error_fix_rate × 0.25     # errors fixed / total tracked errors
-               + pattern_growth × 0.20     # new high-confidence patterns in window
-               + learning_freshness × 0.15 # days since last pattern update (inverted)
-               + repeat_error_trend × 0.10 # repeat error rate change (negative = better)
+self_iteration = task_score × 0.25       # task-suite pass rate
+               + error_fix_rate × 0.20   # errors fixed / total errors
+               + error_verify_rate × 0.15 # verified / fixed
+               + promoted_ratio × 0.15   # promoted patterns / high-conf patterns
+               + n_reflection × 0.15     # reflection reports (cap 10, normalized)
+               + repeat_decline × 0.10   # 100 - repeat_ratio * 100
 ```
+**Weights: 0.25 + 0.20 + 0.15 + 0.15 + 0.15 + 0.10 = 1.00** ✓
 
-**Data sources:** task-suite tests tagged `self_iteration`, error-tracker, pattern-library, reasoning store timestamps.
+**Data sources:** task-suite tests tagged `self_iteration`, error-tracker, pattern-library, reflection reports.
 
 ---
 
-### 6. Dialogue / 对话沟通 (10%)
+### 6. Dialogue / 对话沟通 (9%)
 
 ```
-dialogue = task_score × 0.50
-         + benchmark_pass_rate × 0.20
-         + real_interaction_quality × 0.30 # sampled from message-analyzer log
+dialogue = task_score × 0.40             # task-suite pass rate
+         + n_dialogue_int × 0.20         # interaction count (cap 30, normalized)
+         + benchmark_pass_rate × 0.15    # core benchmark
+         + high_risk_handling × 0.15     # 100 if high-risk seen, else 50
+         + n_intent_coverage × 0.10      # intent diversity (cap 8, normalized)
 ```
+**Weights: 0.40 + 0.20 + 0.15 + 0.15 + 0.10 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `dialogue`, benchmark history, message-analyzer log.
 
@@ -141,76 +168,118 @@ if p95 > 5000:
 # Timeout penalty
 score -= min(20, timeout_rate * 100)
 
-# API chain health bonus
-if all_tiers_healthy:
-    score += 5
-
 score = clamp(score, 0, 100)
 ```
 
-**Data sources:** response-latency-metrics, api-fallback health status.
+**Data sources:** response-latency-metrics, regression-metrics cron timeout rate.
 
 ---
 
-### 8. Robustness / 鲁棒性 (8%)
+### 8. Robustness / 鲁棒性 (7%)
 
 ```
-robustness = task_score × 0.40
-           + benchmark_pass_rate × 0.20
-           + inverse_repeat_error × 0.20   # 1 - repeat_error_rate
-           + alert_frequency × 0.20        # alerts in window (inverted, lower = better)
+robustness = task_score × 0.30           # task-suite pass rate
+           + repeat_error_control × 0.20 # 100 - repeat_ratio * 100
+           + cron_health × 0.20          # 100 - cron_error_ratio * 100
+           + benchmark_pass_rate × 0.15  # core benchmark
+           + alert_control × 0.15        # 100 - normalized alert count
 ```
+**Weights: 0.30 + 0.20 + 0.20 + 0.15 + 0.15 = 1.00** ✓
 
-**Data sources:** task-suite tests tagged `robustness`, benchmark, error-tracker, alerts.jsonl.
+**Data sources:** task-suite tests tagged `robustness`, error-tracker, cron-governor, benchmark, alerts.jsonl.
 
 ---
 
 ### 9. Generalization / 泛化能力 (5%)
 
 ```
-generalization = task_score × 0.45
-               + intent_coverage × 0.30    # unique intent categories observed
-               + orchestrator_diversity × 0.25  # unique pipeline modes used
+generalization = task_score × 0.35       # task-suite pass rate
+               + n_intent_coverage × 0.25 # unique intent categories (cap 8, normalized)
+               + n_orch_diversity × 0.25  # orchestrator log count (cap 10, normalized)
+               + benchmark_pass_rate × 0.15 # core benchmark
 ```
+**Weights: 0.35 + 0.25 + 0.25 + 0.15 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `generalization`, message-analyzer, orchestrator log.
 
 ---
 
-### 10. Policy Adherence / 策略遵循 (7%)
+### 10. Planning / 规划能力 (5%) — NEW in v0.3
+
+Aligned with **T-Eval** (ACL 2024) planning dimension and **CLEAR** efficacy dimension.
 
 ```
-policy = task_score × 0.40
-       + cron_health × 0.25               # 1 - cron_error_rate
-       + security_audit_pass × 0.20       # security config audit results
-       + high_risk_confirm_rate × 0.15    # dangerous operations properly confirmed
+planning = task_score × 0.30             # task-suite pass rate
+         + finalize_rate × 0.25          # finalize approval ratio (0–1 → 0–100)
+         + n_reasoning_total × 0.20      # reasoning entries (cap 120, normalized)
+         + n_orch_diversity × 0.15       # orchestrator diversity (cap 10, normalized)
+         + n_reflection × 0.10           # reflection reports (cap 10, normalized)
 ```
+**Weights: 0.30 + 0.25 + 0.20 + 0.15 + 0.10 = 1.00** ✓
 
-**Data sources:** task-suite tests tagged `policy`, cron-governor-report, security-config-audit.
+**Data sources:** task-suite tests tagged `planning`, finalize log, reasoning store, orchestrator log, reflection reports.
+
+**Rationale:** Planning requires multi-step workflow execution (finalize pipeline), accumulated reasoning patterns (reasoning store), diverse pipeline usage (orchestrator), and reflective plan review (reflection reports).
 
 ---
 
-### 11. Tool Reliability / 工具可靠性 (5%)
+### 11. Hallucination Control / 幻觉控制 (6%) — NEW in v0.3
+
+Aligned with **CLEAR** assurance dimension and **Anthropic** safety/trust evaluation.
 
 ```
-tool_reliability = task_score × 0.40
-                 + cron_success_rate × 0.25
-                 + benchmark_pass_rate × 0.20
-                 + rule_candidates × 0.15  # auto-generated rules (capped at 20)
+hallucination_control = task_score × 0.25     # task-suite pass rate
+                      + reasoning_depth × 0.25 # high-confidence accuracy (0–1 → 0–100)
+                      + repeat_error_ctrl × 0.20 # 100 - repeat_ratio * 100
+                      + benchmark_pass_rate × 0.15
+                      + hp_error_ctrl × 0.15   # 100 - high_priority_open_ratio * 100
 ```
+**Weights: 0.25 + 0.25 + 0.20 + 0.15 + 0.15 = 1.00** ✓
+
+**Data sources:** task-suite tests tagged `hallucination_control`, reasoning store, error-tracker, benchmark.
+
+**Rationale:** Low hallucination correlates with high reasoning accuracy (not blindly high-confidence), low repeated errors (not persistently wrong), and controlled high-priority error rate.
+
+---
+
+### 12. Policy Adherence / 策略遵循 (5%)
+
+```
+policy = task_score × 0.35              # task-suite pass rate
+       + cron_thin × 0.25              # thin-script compliance ratio
+       + cron_health × 0.20            # 100 - cron_error_ratio * 100
+       + high_risk_confirm × 0.20      # 100 if high-risk interaction seen, else 60
+```
+**Weights: 0.35 + 0.25 + 0.20 + 0.20 = 1.00** ✓
+
+**Data sources:** task-suite tests tagged `policy`, cron-governor-report, message-analyzer log.
+
+---
+
+### 13. Tool Reliability / 工具可靠性 (4%)
+
+```
+tool_reliability = task_score × 0.30     # task-suite pass rate
+                 + benchmark_pass_rate × 0.20
+                 + cron_health × 0.20    # 100 - cron_error_ratio * 100
+                 + cron_thin × 0.15      # thin-script compliance
+                 + n_rule_candidates × 0.15 # rule candidates (cap 10, normalized)
+```
+**Weights: 0.30 + 0.20 + 0.20 + 0.15 + 0.15 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `tool`, cron report, benchmark, rule-candidates.json.
 
 ---
 
-### 12. Calibration / 校准能力 (5%)
+### 14. Calibration / 校准能力 (5%)
 
 ```
-calibration = task_score × 0.35
-            + reasoning_depth × 0.25       # high-confidence ratio accuracy
-            + finalize_approval × 0.20     # finalize acceptance rate
-            + high_conf_error × 0.20       # high-confidence errors (inverted)
+calibration = task_score × 0.30          # task-suite pass rate
+            + conf_accuracy × 0.25       # composite: reasoning_depth×0.6 + (1-repeat_ratio)×0.4
+            + finalize_rate × 0.20       # finalize approval ratio
+            + hp_error_ctrl × 0.25       # 100 - high_priority_open_ratio * 100
 ```
+**Weights: 0.30 + 0.25 + 0.20 + 0.25 = 1.00** ✓
 
 **Data sources:** task-suite tests tagged `calibration`, reasoning store, finalize log, error tracker.
 
@@ -238,7 +307,7 @@ When `--compare-last` is used, the system loads the most recent entry from `hist
 delta_i = current_dimension_i - previous_dimension_i
 ```
 
-Dimensions with negative delta are flagged as **regressions** (退化告警).
+Dimensions with delta < -5 are flagged as **degradation alerts** (退化告警).
 
 ---
 
@@ -261,7 +330,7 @@ Dimensions with negative delta are flagged as **regressions** (退化告警).
 ## Dimension Spread / 维度离散度
 
 ```
-spread = variance(all 12 dimension scores)
+spread = variance(all 14 dimension scores)
 ```
 
 High spread indicates unbalanced capability — some dimensions are strong while others lag.
@@ -277,22 +346,51 @@ Edit `config/config.json`:
 ```json
 {
   "weights": {
-    "understanding": 10,
-    "analysis": 10,
-    "thinking": 10,
-    "reasoning": 15,
-    "self_iteration": 10,
-    "dialogue_communication": 10,
-    "responsiveness": 5,
-    "robustness": 8,
-    "generalization": 5,
-    "policy_adherence": 7,
-    "tool_reliability": 5,
-    "calibration": 5
+    "main": {
+      "understanding": 9,
+      "analysis": 9,
+      "thinking": 9,
+      "reasoning": 13,
+      "self_iteration": 9,
+      "dialogue_communication": 9,
+      "responsiveness": 5
+    },
+    "expanded": {
+      "robustness": 7,
+      "generalization": 5,
+      "planning": 5,
+      "hallucination_control": 6,
+      "policy_adherence": 5,
+      "tool_reliability": 4,
+      "calibration": 5
+    }
   }
 }
 ```
 
 Weights are normalized to sum to 100% at runtime, so you can use any scale.
 权重在运行时会自动归一化为 100%，所以可以使用任意尺度。
+
+---
+
+## Industry Alignment / 行业标准对齐
+
+v0.3.0 evaluation dimensions are aligned with established frameworks:
+
+| This project | CLEAR (2024) | T-Eval (ACL 2024) | Anthropic Agent Eval |
+|---|---|---|---|
+| Understanding | Efficacy | Understanding | Instruction following |
+| Analysis | Efficacy | Reasoning | Code-based graders |
+| Thinking | Assurance | Review | Safety evaluation |
+| Reasoning | Efficacy | Reasoning | Model-based graders |
+| Self-iteration | Reliability | — | Regression evals |
+| Dialogue | Efficacy | Instruction Following | Conversational eval |
+| Responsiveness | Latency | — | Latency tracking |
+| Robustness | Reliability | — | Non-determinism handling |
+| Generalization | Efficacy | Retrieval | Capability evals |
+| **Planning** | **Efficacy** | **Planning** | **Task decomposition** |
+| **Hallucination Control** | **Assurance** | **— (safety)** | **Safety/trust** |
+| Policy adherence | Assurance | — | Safety evaluation |
+| Tool reliability | Reliability | — | Code-based graders |
+| Calibration | Assurance | Review | LLM-as-judge calibration |
 ]]>

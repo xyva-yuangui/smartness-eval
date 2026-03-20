@@ -52,7 +52,7 @@ How to increase awareness and stars for this project.
 📈 Trend: +X.X overall vs last week
 
 Evaluated with OpenClaw Smartness Eval
-⭐ https://github.com/yh22e/smartness-eval
+⭐ https://github.com/xyva-yuangui/smartness-eval
 
 #AIAgent #Benchmark #OpenClaw #AgentEval
 ```

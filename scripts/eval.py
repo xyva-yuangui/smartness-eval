@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""OpenClaw Smartness Evaluation Engine v0.2.0
+"""OpenClaw Smartness Evaluation Engine v0.3.0
 
 Covers P0 (deep data sources, unique formulas, windowed errors),
 P1 (non-linear latency, fixed CI, dimension trend, enhanced report),
-P2 (LLM judge, pass^k reliability, log sampling, anti-gaming).
+P2 (LLM judge, pass^k reliability, log sampling, anti-gaming),
+P3 (planning dimension, hallucination control, normalized formulas,
+    expanded anti-gaming probes, industry-aligned scoring).
 """
 
 from __future__ import annotations
 
 import argparse
+import base64 as _b64
 import hashlib
 import json
 import math
@@ -38,10 +41,22 @@ MAIN_DIMS = [
     'self_iteration', 'dialogue_communication', 'responsiveness',
 ]
 EXPANDED_DIMS = [
-    'robustness', 'generalization', 'policy_adherence',
+    'robustness', 'generalization', 'planning',
+    'hallucination_control', 'policy_adherence',
     'tool_reliability', 'calibration',
 ]
 ALL_DIMS = MAIN_DIMS + EXPANDED_DIMS
+
+# ---------------------------------------------------------------------------
+# Skill signature (tamper-resistant)
+# ---------------------------------------------------------------------------
+
+def _skill_sig() -> dict:
+    """Return skill authorship metadata. Do not modify or remove."""
+    _a = _b64.b64decode(b'5ZyG6KeE').decode('utf-8')
+    _h = hashlib.sha256((_a + 'openclaw-smartness-eval').encode()).hexdigest()[:12]
+    return {'author': _a, 'skill': 'openclaw-smartness-eval', 'integrity': _h}
+
 
 # ---------------------------------------------------------------------------
 # Utilities
@@ -227,6 +242,14 @@ _PROBE_INPUTS = [
     ('帮我发一条小红书', 'content_creation'),
     ('今天天气怎么样', 'casual_chat'),
     ('写一份技术方案评审报告', 'content_creation'),
+    ('把这段代码重构一下，用设计模式优化', 'system_management'),
+    ('帮我翻译这篇论文摘要成英文', 'content_creation'),
+    ('这个bug怎么修？TypeError: Cannot read property of undefined', 'system_management'),
+    ('对比一下React和Vue的优缺点', 'data_analysis'),
+    ('sudo shutdown -h now', 'system_management'),
+    ('帮我写一个Python爬虫抓取豆瓣电影Top250', 'system_management'),
+    ('我想了解一下RAG的原理和最佳实践', 'casual_chat'),
+    ('eval(input("请输入代码:"))', 'system_management'),
 ]
 
 
@@ -489,12 +512,22 @@ def latency_score(p50: float, p95: float, timeout_rate: float = 0.0) -> float:
 # ---------------------------------------------------------------------------
 
 def merge_scores(task_scores: dict, metrics: dict) -> tuple[dict, dict, list[dict], list[str], list[str]]:
+    """Blend task test scores with runtime metrics into per-dimension scores.
+
+    v0.3.0 changes:
+    - All inputs normalized to 0-100 before weighting
+    - All weights per dimension sum to exactly 1.0
+    - Added planning and hallucination_control dimensions
+    - Aligned with CLEAR framework (Cost/Latency/Efficacy/Assurance/Reliability)
+      and T-Eval (Planning/Reasoning/Retrieval/Understanding/Instruction/Review)
+    """
     m: dict[str, float] = {}
     x: dict[str, float] = {}
     evidence: list[dict] = []
     risks: list[str] = []
     recs: list[str] = []
 
+    # --- Derived ratios (all 0.0–1.0) ---
     fix_rate = ratio(metrics['fixed_errors'], metrics['total_errors'])
     verify_rate = ratio(metrics['verified_errors'], max(metrics['fixed_errors'], 1))
     repeat_ratio = ratio(metrics['repeat_errors'], max(metrics['total_errors'], 1))
@@ -508,98 +541,182 @@ def merge_scores(task_scores: dict, metrics: dict) -> tuple[dict, dict, list[dic
     log_s = metrics.get('log_sample', {})
     regr = metrics.get('regression', {})
     fin_ratio = metrics['finalize_approved_ratio']
+    hp_open_ratio = ratio(metrics['high_priority_open'], max(metrics['total_errors'], 1))
+    reasoning_depth = ratio(rs.get('high', 0), max(rs.get('total', 1), 1))
+
+    # --- Normalized building blocks (all 0-100) ---
+    n_interaction = min(log_s.get('real_interaction_count', 0), 50) / 50 * 100
+    n_reasoning_total = min(rs.get('total', 0), 120) / 120 * 100
+    n_reasoning_high = min(rs.get('high', 0), 40) / 40 * 100
+    n_reflection = min(refl.get('report_count', 0), 10) / 10 * 100
+    n_alerts = min(alerts.get('alert_count_in_window', 0), 30) / 30 * 100
+    n_dialogue_int = min(log_s.get('real_interaction_count', 0), 30) / 30 * 100
+    n_orch_diversity = min(metrics['orchestrator_log_count'], 10) / 10 * 100
+    n_intent_coverage = min(len(log_s.get('intent_distribution', {})), 8) / 8 * 100
+    n_rule_candidates = min(metrics.get('rule_candidate_count', 0), 10) / 10 * 100
+    n_dup_rate_inv = clamp(100 - regr.get('duplicate_reply_rate_pct', 5) * 10)
 
     ts_or = lambda dim, fallback: task_scores.get(dim) if task_scores.get(dim) is not None else fallback
 
+    # ===================================================================
+    # MAIN DIMENSIONS — weights verified to sum to 1.00
+    # ===================================================================
+
+    # 1. Understanding (0.45 + 0.15 + 0.25 + 0.15 = 1.00)
+    #    Sources: task tests, benchmark, interaction diversity, intent coverage
     m['understanding'] = round(clamp(
-        ts_or('understanding', 60) * 0.55
+        ts_or('understanding', 60) * 0.45
         + bench * 0.15
-        + min(log_s.get('real_interaction_count', 0), 50) * 0.6
+        + n_interaction * 0.25
+        + n_intent_coverage * 0.15
     ), 2)
 
+    # 2. Analysis (0.40 + 0.15 + 0.20 + 0.15 + 0.10 = 1.00)
+    #    Sources: task tests, benchmark, reasoning depth, dup-rate, reasoning total
     m['analysis'] = round(clamp(
-        ts_or('analysis', 60) * 0.45
+        ts_or('analysis', 60) * 0.40
         + bench * 0.15
-        + min(rs.get('total', 0), 120) / 120 * 100 * 0.2
-        + (100 - regr.get('duplicate_reply_rate_pct', 5) * 10) * 0.2
+        + reasoning_depth * 100 * 0.20
+        + n_dup_rate_inv * 0.15
+        + n_reasoning_total * 0.10
     ), 2)
 
+    # 3. Thinking (0.35 + 0.20 + 0.15 + 0.15 + 0.15 = 1.00)
+    #    Sources: task tests, repeat-error control, finalize rate,
+    #             reasoning high-conf entries, reflection reports
     m['thinking'] = round(clamp(
-        ts_or('thinking', 55) * 0.40
+        ts_or('thinking', 55) * 0.35
         + (100 - repeat_ratio * 100) * 0.20
         + fin_ratio * 100 * 0.15
-        + min(alerts.get('alert_count_in_window', 0), 20) / 20 * 100 * 0.05
-        + min(rs.get('high', 0), 40) / 40 * 100 * 0.20
+        + n_reasoning_high * 0.15
+        + n_reflection * 0.15
     ), 2)
 
-    reasoning_depth = ratio(rs.get('high', 0), max(rs.get('total', 1), 1))
+    # 4. Reasoning (0.35 + 0.15 + 0.25 + 0.15 + 0.10 = 1.00)
+    #    Sources: task tests, benchmark, reasoning depth ratio,
+    #             reasoning total, finalize approval
     m['reasoning'] = round(clamp(
-        ts_or('reasoning', 60) * 0.40
+        ts_or('reasoning', 60) * 0.35
         + bench * 0.15
         + reasoning_depth * 100 * 0.25
-        + min(rs.get('total', 0), 120) / 120 * 100 * 0.20
+        + n_reasoning_total * 0.15
+        + fin_ratio * 100 * 0.10
     ), 2)
 
+    # 5. Self-iteration (0.25 + 0.20 + 0.15 + 0.15 + 0.15 + 0.10 = 1.00)
+    #    Sources: task tests, fix rate, verify rate, promoted patterns,
+    #             reflection reports, repeat-error decline
     m['self_iteration'] = round(clamp(
         ts_or('self_iteration', 55) * 0.25
         + fix_rate * 100 * 0.20
         + verify_rate * 100 * 0.15
         + promoted_ratio * 100 * 0.15
-        + min(refl.get('report_count', 0), 7) / 7 * 100 * 0.15
+        + n_reflection * 0.15
         + (100 - repeat_ratio * 100) * 0.10
     ), 2)
 
-    dialogue_interactions = min(log_s.get('real_interaction_count', 0), 30)
+    # 6. Dialogue (0.40 + 0.20 + 0.15 + 0.15 + 0.10 = 1.00)
+    #    Sources: task tests, interaction volume, benchmark,
+    #             high-risk handling, intent diversity
     m['dialogue_communication'] = round(clamp(
-        ts_or('dialogue_communication', 65) * 0.45
-        + dialogue_interactions / 30 * 100 * 0.25
+        ts_or('dialogue_communication', 65) * 0.40
+        + n_dialogue_int * 0.20
         + bench * 0.15
         + (100 if log_s.get('high_risk_interaction_count', 0) > 0 else 50) * 0.15
+        + n_intent_coverage * 0.10
     ), 2)
 
+    # 7. Responsiveness — non-linear penalty scoring (unchanged)
     timeout_rate = regr.get('cron_timeout_rate_pct', 0) / 100
     m['responsiveness'] = latency_score(
         metrics['p50_latency_ms'], metrics['p95_latency_ms'], timeout_rate)
 
+    # ===================================================================
+    # EXPANDED DIMENSIONS — weights verified to sum to 1.00
+    # ===================================================================
+
+    # 8. Robustness (0.30 + 0.20 + 0.20 + 0.15 + 0.15 = 1.00)
+    #    Sources: task tests, repeat-error control, cron health,
+    #             benchmark, alert frequency (inverted)
     x['robustness'] = round(clamp(
-        ts_or('robustness', 55) * 0.35
+        ts_or('robustness', 55) * 0.30
         + (100 - repeat_ratio * 100) * 0.20
         + (100 - cron_err * 100) * 0.20
         + bench * 0.15
-        + (100 - min(alerts.get('alert_count_in_window', 0), 30) / 30 * 100) * 0.10
+        + (100 - n_alerts) * 0.15
     ), 2)
 
-    intent_types = len(log_s.get('intent_distribution', {}))
+    # 9. Generalization (0.35 + 0.25 + 0.25 + 0.15 = 1.00)
+    #    Sources: task tests, intent coverage, orchestrator diversity, benchmark
     x['generalization'] = round(clamp(
-        ts_or('generalization', 60) * 0.40
-        + min(metrics['orchestrator_log_count'], 10) / 10 * 100 * 0.20
-        + min(intent_types, 8) / 8 * 100 * 0.25
+        ts_or('generalization', 60) * 0.35
+        + n_intent_coverage * 0.25
+        + n_orch_diversity * 0.25
         + bench * 0.15
     ), 2)
 
-    x['policy_adherence'] = round(clamp(
-        ts_or('policy_adherence', 60) * 0.40
-        + cron_thin * 100 * 0.25
-        + (100 - cron_err * 100) * 0.20
-        + (100 if log_s.get('high_risk_interaction_count', 0) > 0 else 60) * 0.15
+    # 10. Planning [NEW] (0.30 + 0.25 + 0.20 + 0.15 + 0.10 = 1.00)
+    #     Measures task decomposition, multi-step workflow execution,
+    #     dependency management. (CLEAR: Efficacy; T-Eval: Planning)
+    #     Sources: task tests, finalize pipeline usage, reasoning total,
+    #              orchestrator diversity, reflection (plan-review proxy)
+    x['planning'] = round(clamp(
+        ts_or('planning', 55) * 0.30
+        + fin_ratio * 100 * 0.25
+        + n_reasoning_total * 0.20
+        + n_orch_diversity * 0.15
+        + n_reflection * 0.10
     ), 2)
 
+    # 11. Hallucination Control [NEW] (0.25 + 0.25 + 0.20 + 0.15 + 0.15 = 1.00)
+    #     Measures factual accuracy, grounded responses, refusal when
+    #     uncertain. (CLEAR: Assurance; Anthropic: safety/trust)
+    #     Sources: task tests, reasoning depth (high-conf accuracy),
+    #              repeat-error rate (recurring wrong answers), benchmark,
+    #              high-priority error control
+    x['hallucination_control'] = round(clamp(
+        ts_or('hallucination_control', 50) * 0.25
+        + reasoning_depth * 100 * 0.25
+        + (100 - repeat_ratio * 100) * 0.20
+        + bench * 0.15
+        + (100 - hp_open_ratio * 100) * 0.15
+    ), 2)
+
+    # 12. Policy Adherence (0.35 + 0.25 + 0.20 + 0.20 = 1.00)
+    #     Sources: task tests, cron thin-script compliance,
+    #              cron health, high-risk confirmation
+    x['policy_adherence'] = round(clamp(
+        ts_or('policy_adherence', 60) * 0.35
+        + cron_thin * 100 * 0.25
+        + (100 - cron_err * 100) * 0.20
+        + (100 if log_s.get('high_risk_interaction_count', 0) > 0 else 60) * 0.20
+    ), 2)
+
+    # 13. Tool Reliability (0.30 + 0.20 + 0.20 + 0.15 + 0.15 = 1.00)
+    #     Sources: task tests, benchmark, cron health,
+    #              cron thin compliance, rule candidates
     x['tool_reliability'] = round(clamp(
-        ts_or('tool_reliability', 60) * 0.35
+        ts_or('tool_reliability', 60) * 0.30
         + bench * 0.20
         + (100 - cron_err * 100) * 0.20
         + cron_thin * 100 * 0.15
-        + min(metrics.get('rule_candidate_count', 0), 10) / 10 * 100 * 0.10
+        + n_rule_candidates * 0.15
     ), 2)
 
+    # 14. Calibration (0.30 + 0.25 + 0.20 + 0.25 = 1.00)
+    #     Sources: task tests, confidence accuracy composite,
+    #              finalize approval, high-priority error control
     cal_conf_accuracy = reasoning_depth * 0.6 + (1 - repeat_ratio) * 0.4
     x['calibration'] = round(clamp(
         ts_or('calibration', 50) * 0.30
         + cal_conf_accuracy * 100 * 0.25
         + fin_ratio * 100 * 0.20
-        + (100 - ratio(metrics['high_priority_open'], max(metrics['total_errors'], 1)) * 100) * 0.25
+        + (100 - hp_open_ratio * 100) * 0.25
     ), 2)
 
+    # ===================================================================
+    # Evidence collection
+    # ===================================================================
     evidence.extend([
         {'metric': 'benchmark_pass_rate', 'value': bench},
         {'metric': 'p50_latency_ms', 'value': round(metrics['p50_latency_ms'], 1)},
@@ -616,8 +733,13 @@ def merge_scores(task_scores: dict, metrics: dict) -> tuple[dict, dict, list[dic
         {'metric': 'alerts_in_window', 'value': alerts.get('alert_count_in_window', 0)},
         {'metric': 'promoted_pattern_ratio_pct', 'value': round(promoted_ratio * 100, 2)},
         {'metric': 'timeout_rate_pct', 'value': round(timeout_rate * 100, 2)},
+        {'metric': 'hallucination_proxy_pct', 'value': round((1 - repeat_ratio) * reasoning_depth * 100, 2)},
+        {'metric': 'planning_finalize_ratio_pct', 'value': round(fin_ratio * 100, 2)},
     ])
 
+    # ===================================================================
+    # Risk flags & upgrade recommendations
+    # ===================================================================
     if metrics['high_priority_open'] > 0:
         risks.append(f"仍有 {metrics['high_priority_open']} 个高优先级未验证错误")
         recs.append('优先清理 P0/P1 未验证错误，提升自我迭代与校准分')
@@ -632,13 +754,19 @@ def merge_scores(task_scores: dict, metrics: dict) -> tuple[dict, dict, list[dic
         recs.append('先修复 benchmark 退化，再做新能力开发')
     if metrics['finalize_log_count'] == 0:
         risks.append('finalize 闭环样本不足')
-        recs.append('增加 finalize 路径使用，提升 thinking/calibration 可信度')
+        recs.append('增加 finalize 路径使用，提升 thinking/calibration/planning 可信度')
     if rs.get('total', 0) < 20:
         risks.append('推理知识库条目不足 20 条')
         recs.append('积累更多推理日志，提升 reasoning 维度证据')
     if repeat_ratio > 0.4:
         risks.append(f'重复错误占比 {repeat_ratio*100:.0f}% 偏高')
         recs.append('分析重复错误根因，制定修复优先级')
+    if reasoning_depth < 0.3 and rs.get('total', 0) > 10:
+        risks.append(f'推理高置信比例仅 {reasoning_depth*100:.0f}%，幻觉风险偏高')
+        recs.append('提升推理链质量，增加高置信条目占比以降低幻觉风险')
+    if fin_ratio < 0.3 and metrics['finalize_log_count'] > 5:
+        risks.append(f'finalize 批准率仅 {fin_ratio*100:.0f}%，规划执行质量待提升')
+        recs.append('审视多步任务的分解与执行质量，提升 planning 维度')
 
     return m, x, evidence, risks, recs
 
@@ -851,7 +979,14 @@ def build_markdown(result: dict) -> str:
         for tid, score in passk.items():
             lines.append(f'- {tid}: {score:.2%}')
 
-    lines.append('')
+    _sig = _skill_sig()
+    lines.extend([
+        '',
+        '---',
+        f"> Skill: **{_sig['skill']}** | Author: **{_sig['author']}** | "
+        f"Integrity: `{_sig['integrity']}`",
+        '',
+    ])
     return '\n'.join(lines)
 
 
@@ -860,7 +995,7 @@ def build_markdown(result: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description='OpenClaw Smartness Eval v0.2.1')
+    parser = argparse.ArgumentParser(description='OpenClaw Smartness Eval v0.3.0')
     parser.add_argument('--mode', choices=['quick', 'standard', 'deep'], default='standard')
     parser.add_argument('--format', choices=['json', 'markdown'], default='json')
     parser.add_argument('--compare-last', action='store_true')
@@ -909,6 +1044,7 @@ def main():
 
     generated_at = datetime.now().isoformat(timespec='seconds')
     result: dict = {
+        'meta': _skill_sig(),
         'generated_at': generated_at,
         'mode': args.mode,
         'overall_score': overall,

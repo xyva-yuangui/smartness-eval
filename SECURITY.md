@@ -16,7 +16,7 @@
 **Do NOT open public issues for security vulnerabilities.**
 **请勿通过公开 Issue 报告安全漏洞。**
 
-Please use [GitHub Security Advisories](https://github.com/yh22e/smartness-eval/security/advisories) to report privately.
+Please use [GitHub Security Advisories](https://github.com/xyva-yuangui/smartness-eval/security/advisories) to report privately.
 
 Include / 请包含:
 

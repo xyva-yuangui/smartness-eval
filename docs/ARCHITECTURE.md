@@ -95,7 +95,7 @@
 | `generate_probe_tests()` | Create random anti-gaming probes / 生成反作弊探针 |
 | `collect_metrics()` | Read all state files within time window / 采集运行指标 |
 | `query_reasoning_store()` | SQLite query for reasoning depth stats / 查询推理知识库 |
-| `merge_scores()` | Blend task scores + metrics into 12 dimension scores / 合成维度分数 |
+| `merge_scores()` | Blend task scores + metrics into 14 dimension scores (incl. planning, hallucination_control) / 合成维度分数 |
 | `weighted_overall()` | Weighted sum → single score / 加权总分 |
 | `compute_ci()` | 95% confidence interval from repeated runs / 置信区间 |
 | `compute_trend()` | Delta comparison with previous run / 趋势对比 |
