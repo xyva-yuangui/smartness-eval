@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OpenClaw Smartness Evaluation Engine v1.0.0
+"""OpenClaw Smartness Evaluation Engine v0.3.3
 
 Three-layer scoring architecture:
   Layer 1 — Functional Tests (70%): deterministic capability tests via kernel --process
@@ -538,7 +538,7 @@ def build_markdown(result: dict) -> str:
     grade_emoji = {'A+': '🏆', 'A': '🥇', 'A-': '🥈', 'B+': '🥉',
                    'B': '📈', 'B-': '📊', 'C+': '⚠️', 'C': '⚠️', 'D': '🚨'}
     lines = [
-        f"# OpenClaw Smartness Eval v1.0 — {r['generated_at']}",
+        f"# OpenClaw Smartness Eval v0.3.3 — {r['generated_at']}",
         '',
         f"> **{grade_emoji.get(r['grade'], '')} Overall: {r['overall_score']} ({r['grade']})** "
         f"| mode: {r['mode']} | tests: {r['sample_size']}",
@@ -620,7 +620,7 @@ def build_markdown(result: dict) -> str:
 # ═══════════════════════════════════════════════════════════════════════════
 
 def main():
-    parser = argparse.ArgumentParser(description='OpenClaw Smartness Eval v1.0.0')
+    parser = argparse.ArgumentParser(description='OpenClaw Smartness Eval v0.3.3')
     parser.add_argument('--mode', choices=['quick', 'standard', 'deep'], default='standard')
     parser.add_argument('--format', choices=['json', 'markdown'], default='json')
     parser.add_argument('--compare-last', action='store_true')

@@ -7,7 +7,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [1.0.0] - 2026-03-22
+## [0.3.3] - 2026-03-22
 
 ### Breaking Changes / 重大变更
 - **Complete architecture rewrite** — Replaced 14-dimension mixed-signal scoring with clean 3-layer architecture: Functional Tests (70%) + System Health (20%) + Growth (10%).
